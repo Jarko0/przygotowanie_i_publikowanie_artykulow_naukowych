@@ -13,7 +13,8 @@ from sklearn.metrics import (
     precision_score,
     recall_score,
     f1_score,
-    confusion_matrix
+    confusion_matrix,
+    roc_auc_score
 )
 
 
@@ -89,12 +90,13 @@ for name, model in models.items():
     pred = model.predict(X_test_sel)
 
     results.append({
-        "Model": name,
-        "Accuracy": accuracy_score(y_test, pred),
-        "Precision": precision_score(y_test, pred),
-        "Recall": recall_score(y_test, pred),
-        "F1": f1_score(y_test, pred),
-    })
+    "Model": name,
+    "Accuracy": accuracy_score(y_test, pred),
+    "Precision": precision_score(y_test, pred),
+    "Recall": recall_score(y_test, pred),
+    "F1": f1_score(y_test, pred),
+    "ROC-AUC": roc_auc_score(y_test, model.predict_proba(X_test_sel)[:, 1])
+})
 
 results_df = pd.DataFrame(results)
 
