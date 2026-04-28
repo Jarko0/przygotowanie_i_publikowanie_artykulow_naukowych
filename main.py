@@ -1,13 +1,21 @@
 import pandas as pd
 import numpy as np
-
+from xgboost import XGBClassifier
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import MinMaxScaler, LabelEncoder
+from sklearn.preprocessing import MinMaxScaler
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.svm import SVC
 from sklearn.linear_model import LogisticRegression
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, confusion_matrix, classification_report
+from sklearn.model_selection import cross_val_score
+from sklearn.metrics import (
+    accuracy_score,
+    precision_score,
+    recall_score,
+    f1_score,
+    confusion_matrix
+)
+
 
 cols = [
     'duration','protocol_type','service','flag','src_bytes','dst_bytes','land','wrong_fragment',
@@ -44,7 +52,7 @@ scaler = MinMaxScaler()
 X_scaled = pd.DataFrame(scaler.fit_transform(X), columns=X.columns)
 
 X_train, X_test, y_train, y_test = train_test_split(
-    X_scaled, binary_y, test_size=0.30, random_state=42, stratify=binary_y
+    X_scaled, binary_y, test_size=0.25, random_state=42, stratify=binary_y
 )
 
 rf = RandomForestClassifier(
@@ -56,33 +64,43 @@ rf.fit(X_train, y_train)
 
 importances = pd.Series(rf.feature_importances_, index=X_train.columns).sort_values(ascending=False)
 
-selected_features = importances.head(9).index.tolist()
+selected_features = importances[importances > 0.05].index.tolist()
 X_train_sel = X_train[selected_features]
 X_test_sel = X_test[selected_features]
 
 models = {
-    "SVM": SVC(kernel='linear', probability=True, random_state=42),
-    "Logistic Regression": LogisticRegression(max_iter=1000, class_weight=None, random_state=42),
-    "KNN": KNeighborsClassifier(n_neighbors=5)
+    "SVM": SVC(kernel='linear', C=10, gamma='scale', random_state=42, probability=True),
+    "Logistic Regression": LogisticRegression(max_iter=1000, random_state=42),
+    "KNN": KNeighborsClassifier(n_neighbors=5),
+    "XGBoost": XGBClassifier(
+        n_estimators=100,
+        max_depth=6,
+        learning_rate=0.1,
+        eval_metric='logloss',
+        random_state=42
+    )
 }
 
 results = []
+
 for name, model in models.items():
     model.fit(X_train_sel, y_train)
-    pred = model.predict(X_test_sel)    
-    proba = model.predict_proba(X_test_sel)[:, 1] if hasattr(model, "predict_proba") else pred
+    scores = cross_val_score(model, X_train_sel, y_train, cv=10)
+    pred = model.predict(X_test_sel)
+
     results.append({
         "Model": name,
         "Accuracy": accuracy_score(y_test, pred),
         "Precision": precision_score(y_test, pred),
         "Recall": recall_score(y_test, pred),
         "F1": f1_score(y_test, pred),
-        "AUC": roc_auc_score(y_test, proba)
     })
 
 results_df = pd.DataFrame(results)
+
 print("Top 9 cech:")
 print(selected_features)
+
 print("\nRezultaty:")
 print(results_df.sort_values("Accuracy", ascending=False).to_string(index=False))
 
