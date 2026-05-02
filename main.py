@@ -1,5 +1,7 @@
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
 from xgboost import XGBClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
@@ -65,7 +67,7 @@ rf.fit(X_train, y_train)
 
 importances = pd.Series(rf.feature_importances_, index=X_train.columns).sort_values(ascending=False)
 
-selected_features = importances[importances > 0.05].index.tolist()
+selected_features = importances.sort_values(ascending=False).head(9).index.tolist()
 X_train_sel = X_train[selected_features]
 X_test_sel = X_test[selected_features]
 
@@ -109,4 +111,50 @@ print(results_df.sort_values("Accuracy", ascending=False).to_string(index=False)
 for name, model in models.items():
     pred = model.predict(X_test_sel)
     cm = confusion_matrix(y_test, pred)
+
     print(f"\n{name} confusion matrix:\n{cm}")
+
+    plt.figure(figsize=(5,4))
+    sns.heatmap(cm, annot=True, fmt="d", cmap="Blues")
+    plt.title(f"{name} - Confusion Matrix")
+    plt.xlabel("Predicted")
+    plt.ylabel("Actual")
+    plt.show()
+
+print("\n=== PRZYKŁADOWE KLASYFIKACJE (KNN) ===")
+
+sample = X_test_sel.head(5)
+pred_sample = models["KNN"].predict(sample)
+
+feature_meaning = {
+    "dst_bytes": "Ilość danych wysłanych do hosta",
+    "dst_host_srv_count": "Liczba połączeń do tego samego serwera",
+    "dst_host_same_srv_rate": "Procent połączeń do tego samego serwera",
+    "logged_in": "Czy sesja zakończyła się logowaniem (1 = tak)",
+    "flag_SF": "Poprawne zakończenie połączenia",
+    "same_srv_rate": "Jak często używany jest ten sam serwis",
+    "diff_srv_rate": "Różnorodność używanych serwisów",
+    "dst_host_diff_srv_rate": "Różnorodność serwisów na hoście",
+    "count": "Liczba połączeń w krótkim czasie"
+}
+
+for i in range(len(sample)):
+    print("\n" + "="*60)
+    print(f"PRZYKŁAD {i+1}")
+    print("="*60)
+
+    row = sample.iloc[i]
+
+    data = []
+
+    for feature in row.index:
+        value = row[feature]
+        meaning = feature_meaning.get(feature, "Brak opisu")
+        data.append((feature, value, meaning))
+
+    pretty = pd.DataFrame(data, columns=["Cecha", "Wartość", "Znaczenie"])
+
+    print(pretty.to_string(index=False))
+
+    wynik = "ATAK" if pred_sample[i] == 1 else "NORMALNY RUCH"
+    print("\nWynik modelu:", wynik)
