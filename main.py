@@ -133,7 +133,6 @@ for name, model in models.items():
     plt.tight_layout()
     plt.show()
 
-# ROC dla każdego modelu osobno
 for name, (fpr, tpr, roc_auc) in roc_curves.items():
     plt.figure(figsize=(6, 5))
     plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'{name} (AUC = {roc_auc:.4f})')
@@ -148,55 +147,3 @@ for name, (fpr, tpr, roc_auc) in roc_curves.items():
     plt.tight_layout()
     plt.show()
 
-# Jeden wspólny wykres ROC dla wszystkich modeli
-plt.figure(figsize=(8, 6))
-
-for name, (fpr, tpr, roc_auc) in roc_curves.items():
-    plt.plot(fpr, tpr, lw=2, label=f'{name} (AUC = {roc_auc:.4f})')
-
-plt.plot([0, 1], [0, 1], color='black', lw=2, linestyle='--', label='Losowy klasyfikator')
-plt.xlim([0.0, 1.0])
-plt.ylim([0.0, 1.05])
-plt.xlabel('False Positive Rate')
-plt.ylabel('True Positive Rate')
-plt.title('Porównanie krzywych ROC dla wszystkich modeli')
-plt.legend(loc="lower right")
-plt.grid(True, alpha=0.3)
-plt.tight_layout()
-plt.show()
-
-print("\n=== PRZYKŁADOWE KLASYFIKACJE (KNN) ===")
-
-sample = X_test_sel.head(5)
-pred_sample = models["KNN"].predict(sample)
-
-feature_meaning = {
-    "dst_bytes": "Ilość danych wysłanych do hosta",
-    "dst_host_srv_count": "Liczba połączeń do tego samego serwera",
-    "dst_host_same_srv_rate": "Procent połączeń do tego samego serwera",
-    "logged_in": "Czy sesja zakończyła się logowaniem (1 = tak)",
-    "flag_SF": "Poprawne zakończenie połączenia",
-    "same_srv_rate": "Jak często używany jest ten sam serwis",
-    "diff_srv_rate": "Różnorodność używanych serwisów",
-    "dst_host_diff_srv_rate": "Różnorodność serwisów na hoście",
-    "count": "Liczba połączeń w krótkim czasie"
-}
-
-for i in range(len(sample)):
-    print("\n" + "=" * 60)
-    print(f"PRZYKŁAD {i+1}")
-    print("=" * 60)
-
-    row = sample.iloc[i]
-    data = []
-
-    for feature in row.index:
-        value = row[feature]
-        meaning = feature_meaning.get(feature, "Brak opisu")
-        data.append((feature, value, meaning))
-
-    pretty = pd.DataFrame(data, columns=["Cecha", "Wartość", "Znaczenie"])
-    print(pretty.to_string(index=False))
-
-    wynik = "ATAK" if pred_sample[i] == 1 else "NORMALNY RUCH"
-    print("\nWynik modelu:", wynik)
